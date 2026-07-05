@@ -1,4 +1,4 @@
-const CACHE_NAME = "quiet-notes-pwa-v3";
+const CACHE_NAME = "quiet-notes-pwa-v4";
 
 const APP_SHELL = [
   "./",
@@ -34,7 +34,6 @@ self.addEventListener("fetch", event => {
 
   const url = new URL(request.url);
 
-  // Cache only this app's own files. Firebase/Firestore should stay network-first.
   if (url.origin === location.origin) {
     event.respondWith(
       caches.match(request).then(cached => cached || fetch(request))

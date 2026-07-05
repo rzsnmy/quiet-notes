@@ -225,8 +225,12 @@ async function createNote() {
   currentId = ref.id;
   editor.innerHTML = "";
   lastSavedHtml = "";
-  setStatus("saved");
+   setStatus("saved");
   editor.focus();
+
+  if (window.matchMedia("(max-width: 700px)").matches) {
+    document.body.classList.remove("sidebar-open");
+  }
 }
 
 async function saveNow() {
@@ -361,6 +365,14 @@ function wireUi() {
 
   $("newNote").addEventListener("click", () => {
     createNote().catch(err => showError("create error", err));
+  });
+
+    $("openList")?.addEventListener("click", () => {
+    document.body.classList.add("sidebar-open");
+  });
+
+  $("sidebarBackdrop")?.addEventListener("click", () => {
+    document.body.classList.remove("sidebar-open");
   });
 
   $("deleteNote").addEventListener("click", async () => {

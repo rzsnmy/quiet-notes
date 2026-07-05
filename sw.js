@@ -1,4 +1,4 @@
-const CACHE_NAME = "quiet-notes-pwa-v1";
+const CACHE_NAME = "quiet-notes-pwa-v3";
 
 const APP_SHELL = [
   "./",

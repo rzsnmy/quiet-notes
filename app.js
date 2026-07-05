@@ -1,22 +1,10 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  doc,
-  updateDoc,
-  deleteDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-
 /*
-  1. Firebase Console > Project settings > Your apps > SDK setup and configuration
-  2. Copy your own firebaseConfig object here.
+  Quiet Notes - debug/fix version
+
+  Paste your Firebase config below.
+  Firebase Console > Project settings > General > Your apps > SDK setup and configuration > Config
 */
-cconst firebaseConfig = {
+const firebaseConfig = {
   apiKey: "AIzaSyC7SK1Ztw_hgYt7xkNh3JOxLTkThzwXdEo",
   authDomain: "minimum-notepad.firebaseapp.com",
   projectId: "minimum-notepad",
@@ -25,38 +13,85 @@ cconst firebaseConfig = {
   appId: "1:933732498861:web:474bc75de238367cfab524"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// Stable Firebase CDN version.
+const FIREBASE_VERSION = "10.12.2";
 
 const $ = (id) => document.getElementById(id);
 
-const editor = $("editor");
-const noteList = $("noteList");
-const search = $("search");
-const status = $("status");
-const setupNotice = $("setupNotice");
-const spaceKeyInput = $("spaceKeyInput");
+let editor;
+let noteList;
+let search;
+let status;
+let setupNotice;
+let spaceKeyInput;
 
-let spaceId = getInitialSpaceId();
+let db;
+let collection;
+let addDoc;
+let doc;
+let updateDoc;
+let deleteDoc;
+let onSnapshot;
+let query;
+let orderBy;
+let serverTimestamp;
+
+let spaceId = "";
 let notes = [];
 let currentId = null;
 let saveTimer = null;
 let unsubscribe = null;
 let lastSavedHtml = "";
 
-const sanitize = (html) => DOMPurify.sanitize(html, {
-  ALLOWED_TAGS: [
-    "a", "b", "strong", "i", "em", "u", "s",
-    "p", "br", "div", "span",
-    "ul", "ol", "li",
-    "h1", "h2", "h3", "h4",
-    "blockquote",
-    "pre", "code",
-    "hr"
-  ],
-  ALLOWED_ATTR: ["href", "target", "rel"],
-  ADD_ATTR: ["target"]
+function setStatus(text) {
+  if (status) status.textContent = text;
+}
+
+function showError(label, err) {
+  console.error(label, err);
+  const text = err && (err.message || err.code || String(err)) ? (err.message || err.code || String(err)) : String(err);
+  setStatus(`${label}: ${text}`);
+}
+
+window.addEventListener("error", (event) => {
+  showError("script error", event.error || event.message);
 });
+
+window.addEventListener("unhandledrejection", (event) => {
+  showError("promise error", event.reason);
+});
+
+function assertFirebaseConfigLooksFilled() {
+  const raw = JSON.stringify(firebaseConfig);
+  if (raw.includes("PASTE_YOUR")) {
+    throw new Error("firebaseConfig is still placeholder. Paste your Firebase config into app.js.");
+  }
+  if (!firebaseConfig.projectId || firebaseConfig.projectId.includes("PASTE")) {
+    throw new Error("firebaseConfig.projectId is missing.");
+  }
+}
+
+async function loadFirebase() {
+  setStatus("loading firebase…");
+
+  const appMod = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`);
+  const firestoreMod = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-firestore.js`);
+
+  const app = appMod.initializeApp(firebaseConfig);
+
+  db = firestoreMod.getFirestore(app);
+  collection = firestoreMod.collection;
+  addDoc = firestoreMod.addDoc;
+  doc = firestoreMod.doc;
+  updateDoc = firestoreMod.updateDoc;
+  deleteDoc = firestoreMod.deleteDoc;
+  onSnapshot = firestoreMod.onSnapshot;
+  query = firestoreMod.query;
+  orderBy = firestoreMod.orderBy;
+  serverTimestamp = firestoreMod.serverTimestamp;
+
+  setStatus("firebase loaded");
+}
 
 function normalizeKey(raw) {
   return decodeURIComponent(raw || "")
@@ -76,14 +111,45 @@ function getInitialSpaceId() {
 
 function setSpaceId(key) {
   const clean = normalizeKey(key);
-  if (!clean) return;
+  if (!clean) {
+    setStatus("secret key is empty");
+    return;
+  }
+
   localStorage.setItem("quietNotesSpaceId", clean);
   spaceId = clean;
+
   if (location.hash.slice(1) !== clean) {
     history.replaceState(null, "", "#" + clean);
   }
+
   setupNotice.hidden = true;
-  if (!unsubscribe) startRealtime();
+
+  if (!unsubscribe && db) {
+    startRealtime();
+  }
+}
+
+function sanitize(html) {
+  if (!window.DOMPurify) {
+    const div = document.createElement("div");
+    div.innerHTML = html || "";
+    return div.innerText || "";
+  }
+
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      "a", "b", "strong", "i", "em", "u", "s",
+      "p", "br", "div", "span",
+      "ul", "ol", "li",
+      "h1", "h2", "h3", "h4",
+      "blockquote",
+      "pre", "code",
+      "hr"
+    ],
+    ALLOWED_ATTR: ["href", "target", "rel"],
+    ADD_ATTR: ["target"]
+  });
 }
 
 function textFromHtml(html) {
@@ -97,36 +163,6 @@ function titleFromText(text) {
   if (!first) return "Untitled";
   return first.length > 34 ? first.slice(0, 34) + "…" : first;
 }
-
-function setStatus(text) {
-  status.textContent = text;
-}
-
-function showSetupIfNeeded() {
-  if (!spaceId) {
-    setupNotice.hidden = false;
-    return true;
-  }
-  localStorage.setItem("quietNotesSpaceId", spaceId);
-  setupNotice.hidden = true;
-  return false;
-}
-
-$("useKey").addEventListener("click", () => {
-  setSpaceId(spaceKeyInput.value);
-});
-
-spaceKeyInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") setSpaceId(spaceKeyInput.value);
-});
-
-$("makeKey").addEventListener("click", () => {
-  const bytes = new Uint8Array(18);
-  crypto.getRandomValues(bytes);
-  const key = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
-  spaceKeyInput.value = key;
-  setSpaceId(key);
-});
 
 function notesRef() {
   return collection(db, "spaces", spaceId, "notes");
@@ -168,6 +204,12 @@ function selectNote(id) {
 }
 
 async function createNote() {
+  if (!spaceId) {
+    setupNotice.hidden = false;
+    setStatus("enter secret key first");
+    return;
+  }
+
   setStatus("creating…");
   const ref = await addDoc(notesRef(), {
     html: "",
@@ -175,6 +217,7 @@ async function createNote() {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   });
+
   currentId = ref.id;
   editor.innerHTML = "";
   lastSavedHtml = "";
@@ -186,6 +229,7 @@ async function saveNow() {
   if (!currentId) return;
 
   const cleanHtml = sanitize(editor.innerHTML);
+
   if (cleanHtml !== editor.innerHTML) {
     editor.innerHTML = cleanHtml;
   }
@@ -211,14 +255,19 @@ function scheduleSave() {
   setStatus("editing…");
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    saveNow().catch(err => {
-      console.error(err);
-      setStatus("save error");
-    });
+    saveNow().catch(err => showError("save error", err));
   }, 650);
 }
 
 function startRealtime() {
+  if (!spaceId) {
+    setupNotice.hidden = false;
+    setStatus("waiting for secret key");
+    return;
+  }
+
+  setStatus("connecting…");
+
   const q = query(notesRef(), orderBy("updatedAt", "desc"));
 
   unsubscribe = onSnapshot(q, snapshot => {
@@ -243,7 +292,6 @@ function startRealtime() {
         return;
       }
 
-      // Do not disturb the caret while typing.
       if (document.activeElement !== editor) {
         const safeHtml = sanitize(current.html || "");
         editor.innerHTML = safeHtml;
@@ -253,40 +301,11 @@ function startRealtime() {
 
     setStatus("saved");
   }, err => {
-    console.error(err);
-    setStatus("connection error");
+    showError("connection error", err);
   });
 }
 
-editor.addEventListener("input", scheduleSave);
-
-editor.addEventListener("paste", () => {
-  // Let the browser paste rich text first, then sanitize and save.
-  setTimeout(scheduleSave, 0);
-});
-
-search.addEventListener("input", renderList);
-
-$("newNote").addEventListener("click", () => {
-  createNote().catch(err => {
-    console.error(err);
-    setStatus("create error");
-  });
-});
-
-$("deleteNote").addEventListener("click", async () => {
-  if (!currentId) return;
-  const note = notes.find(n => n.id === currentId);
-  const label = titleFromText(note?.text || "");
-  if (!confirm(`Delete "${label}"?`)) return;
-
-  const id = currentId;
-  currentId = null;
-  editor.innerHTML = "";
-  await deleteDoc(noteRef(id));
-});
-
-$("exportHtml").addEventListener("click", () => {
+function exportHtml() {
   const body = notes.map(note => {
     const title = titleFromText(note.text || "");
     return `<section><h1>${escapeHtml(title)}</h1>${sanitize(note.html || "")}</section><hr>`;
@@ -304,7 +323,7 @@ $("exportHtml").addEventListener("click", () => {
   a.remove();
 
   URL.revokeObjectURL(url);
-});
+}
 
 function escapeHtml(str) {
   return str.replace(/[&<>"']/g, ch => ({
@@ -316,10 +335,88 @@ function escapeHtml(str) {
   })[ch]);
 }
 
+function wireUi() {
+  editor = $("editor");
+  noteList = $("noteList");
+  search = $("search");
+  status = $("status");
+  setupNotice = $("setupNotice");
+  spaceKeyInput = $("spaceKeyInput");
+
+  if (!editor || !noteList || !search || !status) {
+    throw new Error("Required HTML elements are missing. Upload the PWA index.html too.");
+  }
+
+  editor.addEventListener("input", scheduleSave);
+
+  editor.addEventListener("paste", () => {
+    setTimeout(scheduleSave, 0);
+  });
+
+  search.addEventListener("input", renderList);
+
+  $("newNote").addEventListener("click", () => {
+    createNote().catch(err => showError("create error", err));
+  });
+
+  $("deleteNote").addEventListener("click", async () => {
+    if (!currentId) return;
+    const note = notes.find(n => n.id === currentId);
+    const label = titleFromText(note?.text || "");
+    if (!confirm(`Delete "${label}"?`)) return;
+
+    const id = currentId;
+    currentId = null;
+    editor.innerHTML = "";
+    await deleteDoc(noteRef(id));
+  });
+
+  $("exportHtml").addEventListener("click", exportHtml);
+
+  $("useKey")?.addEventListener("click", () => {
+    setSpaceId(spaceKeyInput.value);
+  });
+
+  spaceKeyInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") setSpaceId(spaceKeyInput.value);
+  });
+
+  $("makeKey")?.addEventListener("click", () => {
+    const bytes = new Uint8Array(18);
+    crypto.getRandomValues(bytes);
+    const key = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+    if (spaceKeyInput) spaceKeyInput.value = key;
+    setSpaceId(key);
+  });
+}
+
+async function main() {
+  wireUi();
+  setStatus("starting…");
+
+  assertFirebaseConfigLooksFilled();
+
+  spaceId = getInitialSpaceId();
+
+  if (!spaceId) {
+    setupNotice.hidden = false;
+    setStatus("waiting for secret key");
+  } else {
+    localStorage.setItem("quietNotesSpaceId", spaceId);
+    setupNotice.hidden = true;
+  }
+
+  await loadFirebase();
+
+  if (spaceId) {
+    startRealtime();
+  }
+}
+
 window.addEventListener("beforeunload", () => {
   if (unsubscribe) unsubscribe();
 });
 
-if (!showSetupIfNeeded()) {
-  startRealtime();
-}
+main().catch(err => {
+  showError("startup error", err);
+});

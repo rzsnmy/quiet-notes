@@ -164,6 +164,39 @@ function titleFromText(text) {
   return first.length > 34 ? first.slice(0, 34) + "…" : first;
 }
 
+function formatUpdatedAt(timestamp) {
+  if (!timestamp || !timestamp.toDate) return "";
+
+  const date = timestamp.toDate();
+  const now = new Date();
+
+  const sameDay =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+
+  const isYesterday =
+    date.getFullYear() === yesterday.getFullYear() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getDate() === yesterday.getDate();
+
+  const time = date.toLocaleTimeString("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+
+  if (sameDay) return `今日 ${time}`;
+  if (isYesterday) return `昨日 ${time}`;
+
+  return date.toLocaleDateString("ja-JP", {
+    month: "numeric",
+    day: "numeric"
+  });
+}
+
 function notesRef() {
   return collection(db, "spaces", spaceId, "notes");
 }
@@ -184,9 +217,19 @@ function renderList() {
   for (const note of filtered) {
     const button = document.createElement("button");
     button.className = "noteItem" + (note.id === currentId ? " selected" : "");
-    button.textContent = titleFromText(note.text || "");
-    button.addEventListener("click", () => selectNote(note.id));
-    noteList.appendChild(button);
+    const title = document.createElement("div");
+title.className = "noteTitle";
+title.textContent = titleFromText(note.text || "");
+
+const date = document.createElement("div");
+date.className = "noteDate";
+date.textContent = formatUpdatedAt(note.updatedAt);
+
+button.appendChild(title);
+button.appendChild(date);
+
+button.addEventListener("click", () => selectNote(note.id));
+noteList.appendChild(button);
   }
 }
 

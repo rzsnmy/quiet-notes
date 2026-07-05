@@ -32,6 +32,11 @@ button, input {
   font: inherit;
 }
 
+#openList,
+#sidebarBackdrop {
+  display: none;
+}
+
 #app {
   display: grid;
   grid-template-columns: 260px 1fr;

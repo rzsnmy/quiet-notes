@@ -199,8 +199,12 @@ function selectNote(id) {
   editor.innerHTML = safeHtml;
   lastSavedHtml = safeHtml;
   renderList();
-  editor.focus();
+   editor.focus();
   setStatus("saved");
+
+  if (window.matchMedia("(max-width: 700px)").matches) {
+    document.body.classList.remove("sidebar-open");
+  }
 }
 
 async function createNote() {

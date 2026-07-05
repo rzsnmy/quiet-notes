@@ -200,6 +200,10 @@ button, input {
   z-index: 10;
 }
 
+#setupNotice[hidden] {
+  display: none !important;
+}
+
 .setupCard {
   max-width: 540px;
   line-height: 1.7;

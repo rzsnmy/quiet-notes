@@ -1,0 +1,259 @@
+:root {
+  --bg: #fbfaf8;
+  --panel: #f2f0ec;
+  --text: #252525;
+  --muted: #8a857d;
+  --line: #e2ded7;
+  --selected: #e7e2da;
+  --button: #ded8cf;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  margin: 0;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  overscroll-behavior: none;
+}
+
+button, input {
+  font: inherit;
+}
+
+#app {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100dvh;
+}
+
+#sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-top: env(safe-area-inset-top);
+}
+
+#topbar {
+  display: grid;
+  grid-template-columns: 1fr 40px;
+  gap: 8px;
+  padding: 12px;
+}
+
+#search {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: rgba(255,255,255,0.55);
+  border-radius: 10px;
+  padding: 9px 11px;
+  color: var(--text);
+}
+
+#newNote,
+#sideActions button,
+.setupButtons button {
+  border: 0;
+  border-radius: 10px;
+  background: var(--button);
+  color: var(--text);
+  cursor: pointer;
+}
+
+#newNote {
+  font-size: 22px;
+  line-height: 1;
+}
+
+#noteList {
+  overflow: auto;
+  padding: 2px 8px 8px;
+  flex: 1;
+}
+
+.noteItem {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.noteItem:hover {
+  background: rgba(0,0,0,0.04);
+}
+
+.noteItem.selected {
+  background: var(--selected);
+}
+
+#sideActions {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+}
+
+#sideActions button {
+  padding: 8px 10px;
+  color: var(--muted);
+  background: transparent;
+}
+
+#main {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  padding-top: env(safe-area-inset-top);
+}
+
+#status {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top));
+  right: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  user-select: none;
+}
+
+#editor {
+  width: 100%;
+  height: 100dvh;
+  padding: calc(58px + env(safe-area-inset-top)) min(10vw, 120px) calc(80px + env(safe-area-inset-bottom));
+  outline: 0;
+  overflow: auto;
+  line-height: 1.65;
+  font-size: 17px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+#editor:empty::before {
+  content: "Write…";
+  color: var(--muted);
+}
+
+#editor h1,
+#editor h2,
+#editor h3 {
+  line-height: 1.25;
+  margin: 1.2em 0 0.5em;
+}
+
+#editor p {
+  margin: 0.7em 0;
+}
+
+#editor ul,
+#editor ol {
+  padding-left: 1.6em;
+}
+
+#editor blockquote {
+  margin: 1em 0;
+  padding-left: 1em;
+  border-left: 3px solid var(--line);
+  color: #555;
+}
+
+#editor pre {
+  white-space: pre-wrap;
+  background: rgba(0,0,0,0.045);
+  border-radius: 10px;
+  padding: 12px;
+  overflow: auto;
+}
+
+#editor code {
+  background: rgba(0,0,0,0.045);
+  border-radius: 5px;
+  padding: 1px 4px;
+}
+
+#setupNotice {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  z-index: 10;
+}
+
+.setupCard {
+  max-width: 540px;
+  line-height: 1.7;
+}
+
+.setupCard h1 {
+  margin: 0 0 14px;
+  font-weight: 600;
+}
+
+#spaceKeyInput {
+  width: 100%;
+  border: 1px solid var(--line);
+  outline: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.7);
+  color: var(--text);
+}
+
+.setupButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.setupButtons button {
+  padding: 10px 14px;
+}
+
+.setupHint {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  #app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 42dvh 58dvh;
+  }
+
+  #sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  #editor {
+    height: 58dvh;
+    padding: calc(44px + env(safe-area-inset-top)) 20px calc(60px + env(safe-area-inset-bottom));
+    font-size: 16px;
+  }
+
+  #status {
+    right: 14px;
+  }
+}

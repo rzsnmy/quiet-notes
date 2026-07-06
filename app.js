@@ -164,6 +164,37 @@ function titleFromText(text) {
   if (!firstLine) return "Untitled";
 
   return firstLine.length > 34 ? firstLine.slice(0, 34) + "…" : firstLine;
+}function trimTitle(title) {
+  const clean = (title || "").replace(/\s+/g, " ").trim();
+  if (!clean) return "Untitled";
+  return clean.length > 34 ? clean.slice(0, 34) + "…" : clean;
+}
+
+function titleFromText(text) {
+  const firstLine = (text || "").split(/\n/)[0];
+  return trimTitle(firstLine);
+}
+
+function titleFromHtml(html) {
+  const div = document.createElement("div");
+  div.innerHTML = sanitize(html || "");
+
+  const firstBlock = div.querySelector("h1, h2, h3, h4, p, div, li, blockquote, pre");
+
+  if (firstBlock) {
+    return trimTitle(firstBlock.innerText || firstBlock.textContent || "");
+  }
+
+  const plain = div.innerText || div.textContent || "";
+  return titleFromText(plain);
+}
+
+function titleFromNote(note) {
+  if (note && note.html) {
+    return titleFromHtml(note.html);
+  }
+
+  return titleFromText(note?.text || "");
 }
 
 function formatUpdatedAt(timestamp) {
@@ -221,7 +252,7 @@ function renderList() {
     button.className = "noteItem" + (note.id === currentId ? " selected" : "");
     const title = document.createElement("div");
 title.className = "noteTitle";
-title.textContent = titleFromText(note.text || "");
+title.textContent = titleFromNote(note);
 
 const date = document.createElement("div");
 date.className = "noteDate";
@@ -360,7 +391,7 @@ function startRealtime() {
 
 function exportHtml() {
   const body = notes.map(note => {
-    const title = titleFromText(note.text || "");
+    const title = titleFromNote(note);
     return `<section><h1>${escapeHtml(title)}</h1>${sanitize(note.html || "")}</section><hr>`;
   }).join("\n");
 
@@ -423,7 +454,7 @@ function wireUi() {
   $("deleteNote").addEventListener("click", async () => {
     if (!currentId) return;
     const note = notes.find(n => n.id === currentId);
-    const label = titleFromText(note?.text || "");
+   const label = titleFromNote(note);
     if (!confirm(`Delete "${label}"?`)) return;
 
     const id = currentId;

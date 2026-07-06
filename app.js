@@ -159,9 +159,11 @@ function textFromHtml(html) {
 }
 
 function titleFromText(text) {
-  const first = text.split(/\n/).map(s => s.trim()).find(Boolean);
-  if (!first) return "Untitled";
-  return first.length > 34 ? first.slice(0, 34) + "…" : first;
+  const firstLine = (text || "").split(/\n/)[0].trim();
+
+  if (!firstLine) return "Untitled";
+
+  return firstLine.length > 34 ? firstLine.slice(0, 34) + "…" : firstLine;
 }
 
 function formatUpdatedAt(timestamp) {

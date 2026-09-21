@@ -1,5 +1,4 @@
-const CACHE_NAME = "quiet-notes-pwa-v5";
-
+const CACHE_NAME = "quiet-notes-pwa-v6-local-first";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -13,30 +12,45 @@ const APP_SHELL = [
 
 self.addEventListener("install", event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL))
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))
-    )
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
+
+async function networkFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const response = await fetch(request);
+    if (response.ok) cache.put(request, response.clone());
+    return response;
+  } catch {
+    return (await cache.match(request)) || (await caches.match("./index.html"));
+  }
+}
+
+async function cacheFirst(request) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
+  const response = await fetch(request);
+  if (response.ok) (await caches.open(CACHE_NAME)).put(request, response.clone());
+  return response;
+}
 
 self.addEventListener("fetch", event => {
   const request = event.request;
-
   if (request.method !== "GET") return;
-
   const url = new URL(request.url);
+  if (url.origin !== location.origin) return;
 
-  if (url.origin === location.origin) {
-    event.respondWith(
-      caches.match(request).then(cached => cached || fetch(request))
-    );
-  }
+  const isCode = request.mode === "navigate" || ["document", "script", "style"].includes(request.destination);
+  event.respondWith(isCode ? networkFirst(request) : cacheFirst(request));
 });

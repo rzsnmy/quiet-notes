@@ -35,8 +35,8 @@
     </aside>
 
     <main id="main">
-      <div id="status">not connected</div>
-      <article id="editor" contenteditable="true" spellcheck="true" aria-label="note"></article>
+      <div id="status" role="status" aria-live="polite">Loading…</div>
+      <article id="editor" contenteditable="false" spellcheck="true" aria-label="note" aria-busy="true"></article>
     </main>
   </div>
 
@@ -59,7 +59,7 @@
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js").catch(() => {});
+        navigator.serviceWorker.register("./sw.js").then(registration => registration.update()).catch(() => {});
       });
     }
   </script>
